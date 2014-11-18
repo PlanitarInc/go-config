@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"reflect"
 
-	"github.com/PlanitarInc/config/reflectx"
+	"github.com/PlanitarInc/go-config/reflectx"
 )
 
 type Decoder interface {

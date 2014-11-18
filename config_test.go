@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/PlanitarInc/config/decoders"
+	"github.com/PlanitarInc/go-config/decoders"
 	. "github.com/onsi/gomega"
 )
 

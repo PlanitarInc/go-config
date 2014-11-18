@@ -3,7 +3,7 @@ package decoders
 import (
 	"reflect"
 
-	"github.com/PlanitarInc/config/reflectx"
+	"github.com/PlanitarInc/go-config/reflectx"
 )
 
 type structStore struct {

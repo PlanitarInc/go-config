@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/PlanitarInc/config/reflectx"
+	"github.com/PlanitarInc/go-config/reflectx"
 	"gopkg.in/yaml.v2"
 )
 

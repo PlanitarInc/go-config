@@ -1,6 +1,6 @@
 package config
 
-import "github.com/PlanitarInc/config/decoders"
+import "github.com/PlanitarInc/go-config/decoders"
 
 type Flow struct {
 	decoders []decoders.Decoder
