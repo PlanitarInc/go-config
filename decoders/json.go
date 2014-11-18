@@ -1,24 +1,13 @@
 package decoders
 
-import (
-	"encoding/json"
-	"io/ioutil"
-)
+import "encoding/json"
 
-type jsonFileDecoder struct {
-	filename string
+type jsonUnmarshaller struct{}
+
+func (u jsonUnmarshaller) Unmarshall(bs []byte, dst interface{}) error {
+	return json.Unmarshal(bs, dst)
 }
 
 func NewJsonFileDecoder(filename string) Decoder {
-	return &jsonFileDecoder{
-		filename: filename,
-	}
-}
-
-func (d jsonFileDecoder) Decode(src interface{}) error {
-	bs, err := ioutil.ReadFile(d.filename)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(bs, src)
+	return NewFileUnmarshaller(filename, &jsonUnmarshaller{})
 }

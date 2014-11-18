@@ -1,6 +1,7 @@
 package decoders
 
 import (
+	"io/ioutil"
 	"reflect"
 
 	"github.com/PlanitarInc/config/reflectx"
@@ -37,4 +38,28 @@ func KVWrapper(s KVStore) Decoder {
 	m := reflectx.NewMapperFunc(s.Tagname(), s.MapFunc())
 	m.SetReduceFunc(s.ReduceFunc())
 	return &kvwrapper{mapper: m, store: s}
+}
+
+type Unmarshaller interface {
+	Unmarshall([]byte, interface{}) error
+}
+
+type fileunmarshaller struct {
+	filename string
+	u        Unmarshaller
+}
+
+func (f fileunmarshaller) Decode(dst interface{}) error {
+	bs, err := ioutil.ReadFile(f.filename)
+	if err != nil {
+		return err
+	}
+	return f.u.Unmarshall(bs, dst)
+}
+
+func NewFileUnmarshaller(filename string, u Unmarshaller) Decoder {
+	return &fileunmarshaller{
+		filename: filename,
+		u:        u,
+	}
 }

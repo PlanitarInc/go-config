@@ -1,25 +1,13 @@
 package decoders
 
-import (
-	"io/ioutil"
+import "gopkg.in/yaml.v2"
 
-	"gopkg.in/yaml.v2"
-)
+type yamlUnmarshaller struct{}
 
-type yamlFileDecoder struct {
-	filename string
+func (u yamlUnmarshaller) Unmarshall(bs []byte, dst interface{}) error {
+	return yaml.Unmarshal(bs, dst)
 }
 
 func NewYamlFileDecoder(filename string) Decoder {
-	return &yamlFileDecoder{
-		filename: filename,
-	}
-}
-
-func (d yamlFileDecoder) Decode(src interface{}) error {
-	bs, err := ioutil.ReadFile(d.filename)
-	if err != nil {
-		return err
-	}
-	return yaml.Unmarshal(bs, src)
+	return NewFileUnmarshaller(filename, &yamlUnmarshaller{})
 }
