@@ -127,14 +127,151 @@ func TestMapping(t *testing.T) {
 
 	e := EmbeddedLiteral{}
 	mapping = m.TypeMap(reflect.TypeOf(e))
-	//fmt.Printf("Mapping: %#v\n", mapping)
+	for _, key := range []string{"person", "position", "isintense"} {
+		if _, ok := mapping[key]; !ok {
+			t.Errorf("Expecting to find key %s in mapping but did not.", key)
+		}
+	}
+}
 
-	//f := FieldByIndexes(reflect.ValueOf(e), mapping["isintense"])
-	//fmt.Println(f, f.Interface())
+func TestBasicReducer(t *testing.T) {
+	type Foo struct {
+		A int
+		B int
+		C int
+	}
 
-	//tbn := m.TraversalsByName(reflect.TypeOf(e), []string{"isintense"})
-	//fmt.Printf("%#v\n", tbn)
+	f := Foo{1, 2, 3}
+	fv := reflect.ValueOf(f)
+	m := NewMapper("")
+	m.SetReduceFunc(DelimiterKeyReducer("_"))
 
+	v := m.FieldByName(fv, "A")
+	if ival(v) != f.A {
+		t.Errorf("Expecting %d, got %d", ival(v), f.A)
+	}
+	v = m.FieldByName(fv, "B")
+	if ival(v) != f.B {
+		t.Errorf("Expecting %d, got %d", f.B, ival(v))
+	}
+	v = m.FieldByName(fv, "C")
+	if ival(v) != f.C {
+		t.Errorf("Expecting %d, got %d", f.C, ival(v))
+	}
+}
+
+func TestReducerEmbedded(t *testing.T) {
+	type Foo struct {
+		A int
+	}
+
+	type Bar struct {
+		Foo
+		B int
+	}
+
+	type Baz struct {
+		A int
+		Bar
+	}
+
+	m := NewMapper("")
+	m.SetReduceFunc(DelimiterKeyReducer("."))
+
+	z := Baz{}
+	z.A = 1
+	z.B = 2
+	z.Bar.Foo.A = 3
+	zv := reflect.ValueOf(z)
+
+	v := m.FieldByName(zv, "A")
+	if ival(v) != z.A {
+		t.Errorf("Expecting %d, got %d", ival(v), z.A)
+	}
+	v = m.FieldByName(zv, "B")
+	if ival(v) != z.B {
+		t.Errorf("Expecting %d, got %d", ival(v), z.B)
+	}
+}
+
+func TestReducerNested(t *testing.T) {
+	type Person struct {
+		ID           int
+		Name         string
+		WearsGlasses bool `db:"W_G"`
+	}
+
+	m := NewMapperFunc("db", strings.ToUpper)
+	m.SetReduceFunc(DelimiterKeyReducer("_"))
+
+	p := Person{1, "Jason", true}
+	mapping := m.TypeMap(reflect.TypeOf(p))
+
+	for _, key := range []string{"ID", "NAME", "W_G"} {
+		if _, ok := mapping[key]; !ok {
+			t.Errorf("Expecting to find key %s in mapping but did not.", key)
+		}
+	}
+
+	type SportsPerson struct {
+		Weight int
+		Age    int
+		Person
+		Physician Person `db:"DOCTOR"`
+	}
+	s := SportsPerson{Weight: 100, Age: 30, Person: p, Physician: Person{ID: 12}}
+	mapping = m.TypeMap(reflect.TypeOf(s))
+	keys := []string{"ID", "NAME", "W_G", "WEIGHT", "AGE",
+		"DOCTOR_ID", "DOCTOR_NAME", "DOCTOR_W_G"}
+	for _, key := range keys {
+		if _, ok := mapping[key]; !ok {
+			t.Errorf("Expecting to find key %s in mapping but did not.", key)
+		}
+
+	}
+
+	type RugbyPlayer struct {
+		Psychologist Person `db:"DOCTOR"`
+		IsIntense    bool   `db:"is_intense"`
+		IsAllBlack   bool   `db:"-"`
+		SportsPerson
+	}
+	r := RugbyPlayer{Psychologist: Person{ID: 23, Name: "JJ"},
+		SportsPerson: s, IsIntense: true, IsAllBlack: false}
+	mapping = m.TypeMap(reflect.TypeOf(r))
+	keys = []string{"ID", "NAME", "W_G", "WEIGHT", "AGE",
+		"DOCTOR_ID", "DOCTOR_NAME", "DOCTOR_W_G", "is_intense"}
+	for _, key := range keys {
+		if _, ok := mapping[key]; !ok {
+			t.Errorf("Expecting to find key %s in mapping but did not.", key)
+		}
+	}
+
+	if _, ok := mapping["isallblack"]; ok {
+		t.Errorf("Expecting to ignore `IsAllBlack` field")
+	}
+
+	v := m.FieldByName(reflect.ValueOf(r), "DOCTOR_ID")
+	if ival(v) != r.Psychologist.ID {
+		t.Errorf("Expecting %d, got %d", r.Psychologist.ID, ival(v))
+	}
+
+	type EmbeddedLiteral struct {
+		Embedded struct {
+			Person   string
+			Position int
+		}
+		IsIntense bool
+	}
+
+	e := EmbeddedLiteral{}
+	mapping = m.TypeMap(reflect.TypeOf(e))
+	keys = []string{"EMBEDDED_PERSON", "EMBEDDED_POSITION", "ISINTENSE"}
+	for _, key := range keys {
+		if _, ok := mapping[key]; !ok {
+			t.Errorf("Expecting to find key %s in mapping but did not.", key)
+		}
+	}
 }
 
 type E1 struct {

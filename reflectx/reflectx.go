@@ -19,10 +19,11 @@ type fieldMap map[string][]int
 // behaves like most marshallers, optionally obeying a field tag for name
 // mapping and a function to provide a basic mapping of fields to names.
 type Mapper struct {
-	cache   map[reflect.Type]fieldMap
-	tagName string
-	mapFunc func(string) string
-	mutex   sync.Mutex
+	cache      map[reflect.Type]fieldMap
+	tagName    string
+	mapFunc    func(string) string
+	reduceFunc func(string, string) string
+	mutex      sync.Mutex
 }
 
 // NewMapper returns a new mapper which optionally obeys the field tag given
@@ -45,13 +46,17 @@ func NewMapperFunc(tagName string, f func(string) string) *Mapper {
 	}
 }
 
+func (m *Mapper) SetReduceFunc(reduceFunc func(string, string) string) {
+	m.reduceFunc = reduceFunc
+}
+
 // TypeMap returns a mapping of field strings to int slices representing
 // the traversal down the struct to reach the field.
 func (m *Mapper) TypeMap(t reflect.Type) fieldMap {
 	m.mutex.Lock()
 	mapping, ok := m.cache[t]
 	if !ok {
-		mapping = getMapping(t, m.tagName, m.mapFunc)
+		mapping = getMapping(t, m.tagName, m.mapFunc, m.reduceFunc)
 		m.cache[t] = mapping
 	}
 	m.mutex.Unlock()
@@ -185,8 +190,9 @@ func methodName() string {
 }
 
 type typeQueue struct {
-	t reflect.Type
-	p []int
+	t  reflect.Type
+	p  []int
+	ns string
 }
 
 // A copying append that creates a new slice each time.
@@ -201,9 +207,11 @@ func apnd(is []int, i int) []int {
 
 // getMapping returns a mapping for the t type, using the tagName and the mapFunc
 // to determine the canonical names of fields.
-func getMapping(t reflect.Type, tagName string, mapFunc func(string) string) fieldMap {
+func getMapping(t reflect.Type, tagName string, mapFunc func(string) string,
+	reduceFunc func(string, string) string) fieldMap {
+
 	queue := []typeQueue{}
-	queue = append(queue, typeQueue{Deref(t), []int{}})
+	queue = append(queue, typeQueue{Deref(t), []int{}, ""})
 	m := fieldMap{}
 	for len(queue) != 0 {
 		// pop the first item off of the queue
@@ -234,7 +242,18 @@ func getMapping(t reflect.Type, tagName string, mapFunc func(string) string) fie
 
 			// bfs search of anonymous embedded structs
 			if f.Anonymous {
-				queue = append(queue, typeQueue{Deref(f.Type), apnd(tq.p, fieldPos)})
+				queue = append(queue, typeQueue{Deref(f.Type),
+					apnd(tq.p, fieldPos), tq.ns})
+				continue
+			}
+
+			if reduceFunc != nil {
+				name = reduceFunc(tq.ns, name)
+			}
+
+			if f.Type.Kind() == reflect.Struct {
+				queue = append(queue, typeQueue{Deref(f.Type),
+					apnd(tq.p, fieldPos), name})
 				continue
 			}
 
@@ -247,4 +266,13 @@ func getMapping(t reflect.Type, tagName string, mapFunc func(string) string) fie
 		}
 	}
 	return m
+}
+
+func DelimiterKeyReducer(delim string) func(string, string) string {
+	return func(s1, s2 string) string {
+		if s1 == "" {
+			return s2
+		}
+		return s1 + delim + s2
+	}
 }
