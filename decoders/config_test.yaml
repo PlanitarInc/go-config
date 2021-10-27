@@ -1,0 +1,26 @@
+simple:
+  bool: true
+  num: 1
+  str: "test text"
+  arr:
+    - "a"
+    - b
+    - 'd'
+
+nested:
+  one:
+    two:
+      - three: 3
+        common: "c-3"
+      - four: 4
+        common: c-4
+    five: [6,7,8]
+  done: "we are done"
+
+names:
+  lowercase: "just a lowercase key"
+  Capitalized: "a Capitalized key"
+  camelCase: "a camelCase key"
+  PascalCase: "PascalCase is cool"
+  snake_case: "try snake_case"
+  kebab-case: "kebab-case is always a pleasure to look at"
